@@ -83,21 +83,57 @@ fi
 echo -n "APPL????" > "${APP_BUNDLE}/Contents/PkgInfo"
 echo "  .app bundle created."
 
-# Step 5: Code sign with entitlements
-echo "[4/5] Code signing (ad-hoc with entitlements)..."
+# Step 5: Code sign with stable certificate
+CERT_IDENTITY="PaddleMapper Developer"
 ENTITLEMENTS="${PROJECT_DIR}/App/entitlements.plist"
-if [ -f "${ENTITLEMENTS}" ]; then
-    codesign --force --deep --sign - --entitlements "${ENTITLEMENTS}" "${APP_BUNDLE}" 2>/dev/null || {
-        echo "  WARNING: Code signing with entitlements failed. Trying without entitlements..."
-        codesign --force --deep --sign - "${APP_BUNDLE}" 2>/dev/null || {
-            echo "  WARNING: Code signing failed entirely. The app may not work due to Gatekeeper."
+
+# Check if stable certificate is available
+if security find-identity -v -p codesigning "${HOME}/Library/Keychains/login.keychain-db" 2>/dev/null | grep -q "${CERT_IDENTITY}"; then
+    echo "[4/5] Code signing with certificate: ${CERT_IDENTITY}"
+
+    # Sign with stable certificate (includes Hardened Runtime)
+    if [ -f "${ENTITLEMENTS}" ]; then
+        codesign --force --deep --sign "${CERT_IDENTITY}" \
+                 --options runtime \
+                 --entitlements "${ENTITLEMENTS}" \
+                 "${APP_BUNDLE}" 2>/dev/null || {
+            echo "  WARNING: Signing with Hardened Runtime failed, trying without --options runtime..."
+            codesign --force --deep --sign "${CERT_IDENTITY}" \
+                     --entitlements "${ENTITLEMENTS}" \
+                     "${APP_BUNDLE}" 2>/dev/null || {
+                echo "  WARNING: Certificate signing failed, falling back to ad-hoc..."
+                codesign --force --deep --sign - --entitlements "${ENTITLEMENTS}" "${APP_BUNDLE}" 2>/dev/null || \
+                    codesign --force --deep --sign - "${APP_BUNDLE}" 2>/dev/null || true
+            }
         }
-    }
+    else
+        codesign --force --deep --sign "${CERT_IDENTITY}" \
+                 --options runtime \
+                 "${APP_BUNDLE}" 2>/dev/null || {
+            codesign --force --deep --sign "${CERT_IDENTITY}" "${APP_BUNDLE}" 2>/dev/null || {
+                codesign --force --deep --sign - "${APP_BUNDLE}" 2>/dev/null || true
+            }
+        }
+    fi
+
+    # Verify signature
+    if codesign --verify --deep --strict "${APP_BUNDLE}" 2>/dev/null; then
+        echo "  ✅ Signature verified."
+        codesign -d -r - "${APP_BUNDLE}" 2>/dev/null | head -1 | sed 's/^/  DR: /'
+    else
+        echo "  ⚠️  Signature verification failed."
+    fi
 else
-    codesign --force --deep --sign - "${APP_BUNDLE}" 2>/dev/null || {
-        echo "  WARNING: Code signing failed. The app may not work due to Gatekeeper."
-        echo "  You can manually sign with: codesign --force --deep --sign - \"${APP_BUNDLE}\""
-    }
+    echo "[4/5] Code signing (ad-hoc — no stable certificate found)"
+    echo "  ⚠️  Run ./setup-cert.sh to create a stable signing certificate."
+    echo "     This avoids re-authorization after each build."
+    if [ -f "${ENTITLEMENTS}" ]; then
+        codesign --force --deep --sign - --entitlements "${ENTITLEMENTS}" "${APP_BUNDLE}" 2>/dev/null || {
+            codesign --force --deep --sign - "${APP_BUNDLE}" 2>/dev/null || true
+        }
+    else
+        codesign --force --deep --sign - "${APP_BUNDLE}" 2>/dev/null || true
+    fi
 fi
 echo "  Signed."
 
