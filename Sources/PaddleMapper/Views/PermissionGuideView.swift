@@ -316,22 +316,19 @@ struct PermissionGuideView: View {
 
     /// 在终端中执行指定命令
     private func openTerminalWithCommand(command: String) {
-        // 使用 AppleScript 在 Terminal.app 中执行命令
-        let appleScript = """
-        tell application "Terminal"
-            activate
-            do script "\(command.replacingOccurrences(of: "\\", with: "\\\\"))"
-        end tell
-        """
-
-        if let script = NSAppleScript(source: appleScript) {
-            var error: NSDictionary?
-            script.executeAndReturnError(&error)
-            if let error = error {
-                LogWriter.log("[PaddleMapper] Failed to open Terminal: \(error)")
-                // 回退方案：直接打开 Terminal
-                NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Utilities/Terminal.app"))
-            }
+        // 生成临时 .command 文件，让 Terminal.app 自动执行
+        // 比 AppleScript do script 更可靠，避免引号/注释等转义问题
+        let tempDir = NSTemporaryDirectory()
+        let tempFile = tempDir + "paddlemapper-cert-command.command"
+        let scriptContent = "#!/bin/bash\n\(command)\n"
+        do {
+            try scriptContent.write(toFile: tempFile, atomically: true, encoding: .utf8)
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: tempFile)
+            NSWorkspace.shared.open(URL(fileURLWithPath: tempFile))
+        } catch {
+            LogWriter.log("[PaddleMapper] Failed to create temp script: \(error)")
+            // 回退方案：直接打开 Terminal
+            NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Utilities/Terminal.app"))
         }
     }
 }

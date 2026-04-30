@@ -20,7 +20,18 @@ final class PermissionChecker: ObservableObject {
     }
 
     /// Check if the PaddleMapper Developer certificate is installed.
+    /// Runs the check on a background thread to avoid blocking the UI.
     func checkCertInstalled() {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let installed = Self.queryCertInstalled()
+            DispatchQueue.main.async {
+                self?.isCertInstalled = installed
+            }
+        }
+    }
+
+    /// Synchronous check for certificate presence (call from background thread).
+    private static func queryCertInstalled() -> Bool {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/security")
         process.arguments = ["find-identity", "-v", "-p", "codesigning",
@@ -33,9 +44,9 @@ final class PermissionChecker: ObservableObject {
             process.waitUntilExit()
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             let output = String(data: data, encoding: .utf8) ?? ""
-            isCertInstalled = output.contains("PaddleMapper Developer")
+            return output.contains("PaddleMapper Developer")
         } catch {
-            isCertInstalled = false
+            return false
         }
     }
 
@@ -60,9 +71,11 @@ final class PermissionChecker: ObservableObject {
     }
 
     /// Start periodic permission checking (in case user grants while app is running).
+    /// Also monitors certificate installation status.
     func startMonitoring() {
         Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
             self?.checkPermission()
+            self?.checkCertInstalled()
         }
     }
 }
