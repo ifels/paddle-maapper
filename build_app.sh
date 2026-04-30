@@ -80,6 +80,11 @@ cp "${PROJECT_DIR}/App/entitlements.plist" "${APP_BUNDLE}/Contents/Resources/ent
 if [ -f "${PROJECT_DIR}/Resources/AppIcon.icns" ]; then
     cp "${PROJECT_DIR}/Resources/AppIcon.icns" "${APP_BUNDLE}/Contents/Resources/AppIcon.icns"
 fi
+# Copy setup-cert.sh into app bundle (for in-app certificate installation)
+if [ -f "${PROJECT_DIR}/setup-cert.sh" ]; then
+    cp "${PROJECT_DIR}/setup-cert.sh" "${APP_BUNDLE}/Contents/Resources/setup-cert.sh"
+    chmod +x "${APP_BUNDLE}/Contents/Resources/setup-cert.sh"
+fi
 echo -n "APPL????" > "${APP_BUNDLE}/Contents/PkgInfo"
 echo "  .app bundle created."
 

@@ -170,7 +170,7 @@ final class ControllerMonitor: ObservableObject {
             hidDetector = detector
             detector.start()
             LogWriter.log("[PaddleMapper] Started IOKit HID detector for raw report paddle detection")
-
+        
             // Check after a brief delay if HID elements contain paddle definitions
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
                 guard let self = self, let detector = self.hidDetector else { return }

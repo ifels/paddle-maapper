@@ -143,6 +143,9 @@ struct ContentView: View {
         }
     }
 
+    /// 是否显示操作引导页面
+    @State private var showPermissionGuide: Bool = false
+
     /// Accessibility permission warning banner.
     private var permissionWarning: some View {
         VStack(spacing: 8) {
@@ -159,8 +162,8 @@ struct ContentView: View {
                 }
                 .buttonStyle(.borderedProminent)
 
-                Button("Open System Settings") {
-                    permissionChecker.openAccessibilityPreferences()
+                Button("操作引导") {
+                    showPermissionGuide = true
                 }
                 .buttonStyle(.bordered)
 
@@ -172,5 +175,8 @@ struct ContentView: View {
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.orange.opacity(0.3), lineWidth: 1))
         .padding(.horizontal, 16)
         .padding(.top, 16)
+        .sheet(isPresented: $showPermissionGuide) {
+            PermissionGuideView(permissionChecker: permissionChecker)
+        }
     }
 }

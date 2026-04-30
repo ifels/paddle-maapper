@@ -11,9 +11,32 @@ final class PermissionChecker: ObservableObject {
         AXIsProcessTrusted()
     }
 
+    /// Whether the code signing certificate is installed.
+    @Published var isCertInstalled: Bool = false
+
     /// Check and update the published state.
     func checkPermission() {
         isAccessibilityGranted = AXIsProcessTrusted()
+    }
+
+    /// Check if the PaddleMapper Developer certificate is installed.
+    func checkCertInstalled() {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/security")
+        process.arguments = ["find-identity", "-v", "-p", "codesigning",
+                             NSHomeDirectory() + "/Library/Keychains/login.keychain-db"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        do {
+            try process.run()
+            process.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            isCertInstalled = output.contains("PaddleMapper Developer")
+        } catch {
+            isCertInstalled = false
+        }
     }
 
     /// Prompt the user to grant Accessibility permission.

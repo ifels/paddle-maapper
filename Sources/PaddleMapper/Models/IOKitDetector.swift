@@ -143,20 +143,16 @@ final class IOKitDetector: ObservableObject {
             detector.onInputReport(reportID: reportID, report: report, length: reportLength)
         }, context)
 
-        // Try to seize the device from other drivers (e.g. GameController framework)
-        let seizeResult = IOHIDManagerOpen(manager, IOOptionBits(kIOHIDOptionsTypeSeizeDevice))
-        if seizeResult != kIOReturnSuccess {
-            LogWriter.log("[IOKitDetector] Seize failed (\(seizeResult)), trying normal open...")
-            let openResult = IOHIDManagerOpen(manager, 0)
-            if openResult != kIOReturnSuccess {
-                LogWriter.log("[IOKitDetector] Failed to open HID manager: \(openResult)")
-                isRunning = false
-                return
-            }
-            LogWriter.log("[IOKitDetector] Opened without seize - callbacks may not fire for claimed devices")
-        } else {
-            LogWriter.log("[IOKitDetector] Seized device successfully")
+        // Open in shared mode (not seizing) so other apps (e.g. Minecraft) can still
+        // receive controller input. Seizing would exclusively claim the device,
+        // blocking all other HID clients from reading it.
+        let openResult = IOHIDManagerOpen(manager, 0)
+        if openResult != kIOReturnSuccess {
+            LogWriter.log("[IOKitDetector] Failed to open HID manager: \(openResult)")
+            isRunning = false
+            return
         }
+        LogWriter.log("[IOKitDetector] Opened in shared mode - other apps can still read controller")
 
         hidManager = manager
 
@@ -224,19 +220,14 @@ final class IOKitDetector: ObservableObject {
             trackedDevices.append(device)
         }
 
-        // Try to open the device individually with seize.
-        // Manager-level seize may fail for .app bundles without HID entitlements,
-        // but individual device open often succeeds.
-        var deviceOpenResult = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeSeizeDevice))
+        // Open device in shared mode so other apps (e.g. Minecraft) can still
+        // receive controller input from this device.
+        let deviceOpenResult = IOHIDDeviceOpen(device, 0)
         if deviceOpenResult != kIOReturnSuccess {
-            LogWriter.log("[IOKitDetector] Device seize failed (\(deviceOpenResult)), trying normal open...")
-            deviceOpenResult = IOHIDDeviceOpen(device, 0)
-        }
-        if deviceOpenResult != kIOReturnSuccess {
-            LogWriter.log("[IOKitDetector] Failed to open device: \(deviceOpenResult)")
+            LogWriter.log("[IOKitDetector] Device open failed (\(deviceOpenResult))")
             return
         }
-        LogWriter.log("[IOKitDetector] Device opened successfully")
+        LogWriter.log("[IOKitDetector] Device opened in shared mode")
         openedDevices.insert(Unmanaged.passUnretained(device).toOpaque())
 
         // Scan all elements and cache them for polling
