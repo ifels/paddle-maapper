@@ -1,0 +1,40 @@
+/* PaddleMapper - English Localizable Strings */
+
+// MARK: - ContentView (Permission Warning)
+"ACCESSIBILITY_PERMISSION_REQUIRED" = "Accessibility permission required to simulate key presses.";
+"GRANT_PERMISSION" = "Grant Permission";
+"SETUP_GUIDE" = "Setup Guide";
+
+// MARK: - PermissionGuideView (Title)
+"GUIDE_TITLE" = "Setup Guide";
+
+// MARK: - Section 1: Why Accessibility Permission
+"SECTION1_TITLE" = "1. Why is Accessibility permission required?";
+"SECTION1_CONTENT" = "PaddleMapper maps controller paddle buttons to keyboard keys (e.g. F15-F18). To simulate keyboard input, macOS requires the app to have Accessibility permission, otherwise the system blocks all key simulation requests.\n\nWithout this permission, PaddleMapper cannot function.";
+
+// MARK: - Section 2: How to Grant Accessibility Permission
+"SECTION2_TITLE" = "2. How to grant Accessibility permission?";
+"SECTION2_SUBTITLE" = "Follow these steps:";
+"SECTION2_STEP1_TEXT" = "Click the button below to open System Settings → Privacy & Security → Accessibility:";
+"SECTION2_STEP1_BUTTON" = "Open System Settings";
+"SECTION2_STEP2" = "Find PaddleMapper in the list and check the toggle next to it so it turns blue (enabled).";
+"SECTION2_STEP3" = "If PaddleMapper is not in the list, click the \"Grant Permission\" button on the main screen first. The app will show an authorization dialog — click \"Open System Settings\" and then follow step ②.";
+"SECTION2_STEP4" = "Once authorized, PaddleMapper will automatically detect the permission change and refresh its status.";
+
+// MARK: - Section: Version Update Warning
+"SECTION_UPDATE_TITLE" = "⚠️ Permission may be lost after updates";
+"SECTION_UPDATE_CONTENT" = "Without a signing certificate, macOS treats each new build as a \"new app\" and resets previously granted Accessibility permissions.\n\nSolution: Install a signing certificate (see below) so each build uses the same identity. The system will recognize it as the same app and permissions won't be lost.";
+
+// MARK: - Section 3: Install Signing Certificate
+"SECTION3_TITLE" = "3. Install Signing Certificate (Recommended)";
+"SECTION3_CONTENT" = "It is highly recommended to install a signing certificate to permanently resolve the issue of lost permissions after updates.";
+
+"SECTION3_1_TITLE" = "3.1 What are the benefits of installing a certificate?";
+"SECTION3_1_CONTENT" = "Each time the app is updated, its identity changes and the system treats it as a \"new app\", resetting permissions.\n\nAfter installing a certificate, all versions are signed with the same identity, and the system recognizes them as the same app:\n✅ Accessibility permission granted once, permanently valid\n✅ No need to re-authorize after each update\n✅ Certificate valid for 10 years, long-term stability";
+
+"SECTION3_2_TITLE" = "3.2 How to install?";
+"SECTION3_2_CONTENT" = "The installation takes about 1 minute. Follow these steps:\n\n① Click the \"Install Certificate\" button below. Terminal will open automatically and run the installation script.\n\n② You may need to enter your password twice during the process:\n‣ First time: Mac login password (to unlock the keychain)\n‣ Second time: Mac administrator password (to trust the certificate)\n\n③ When installation is complete, Terminal will display \"✅ Certificate installed successfully!\".\n\n④ From then on, each app update will be automatically signed with this certificate, and permissions will no longer be lost.\n\nTo remove the certificate, run in Terminal: ./setup-cert.sh --remove";
+
+// MARK: - Certificate Button / Status
+"INSTALL_CERTIFICATE" = "Install Certificate";
+"CERT_INSTALLED" = "Certificate Installed";

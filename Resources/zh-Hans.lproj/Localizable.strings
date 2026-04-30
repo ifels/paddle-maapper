@@ -1,0 +1,40 @@
+/* PaddleMapper - 简体中文本地化字符串 */
+
+// MARK: - ContentView (权限警告)
+"ACCESSIBILITY_PERMISSION_REQUIRED" = "需要辅助功能权限才能模拟按键输入。";
+"GRANT_PERMISSION" = "授予权限";
+"SETUP_GUIDE" = "操作引导";
+
+// MARK: - PermissionGuideView (标题)
+"GUIDE_TITLE" = "操作引导";
+
+// MARK: - 第1节：为什么需要辅助功能权限
+"SECTION1_TITLE" = "1. 为什么需要「辅助功能」权限？";
+"SECTION1_CONTENT" = "PaddleMapper 的核心功能是将手柄拨片按键映射为键盘按键（如 F15-F18）。要模拟键盘输入，macOS 要求应用必须拥有「辅助功能」权限，否则系统会拦截所有按键模拟请求。\n\n没有此权限，PaddleMapper 将无法工作。";
+
+// MARK: - 第2节：如何授权辅助功能权限
+"SECTION2_TITLE" = "2. 如何授权「辅助功能」权限？";
+"SECTION2_SUBTITLE" = "按以下步骤操作：";
+"SECTION2_STEP1_TEXT" = "点击下方按钮，系统将自动跳转到「隐私与安全性 → 辅助功能」页面：";
+"SECTION2_STEP1_BUTTON" = "打开系统设置";
+"SECTION2_STEP2" = "在列表中找到 PaddleMapper，勾选其左侧的开关使其变为蓝色（已开启）。";
+"SECTION2_STEP3" = "如果列表中没有 PaddleMapper，请先点击主界面的「授予权限」按钮，应用会弹出授权请求对话框，点击「打开系统设置」后再按步骤 ② 操作。";
+"SECTION2_STEP4" = "授权完成后，PaddleMapper 会自动检测到权限变化并刷新状态。";
+
+// MARK: - 版本更新说明
+"SECTION_UPDATE_TITLE" = "⚠️ 版本更新后权限可能丢失";
+"SECTION_UPDATE_CONTENT" = "如果您没有安装签名证书，每次编译新版本后 macOS 会将其视为「新应用」，之前授予的辅助功能权限会自动失效，需要重新授权。\n\n解决方案：安装签名证书（见下方），让每次编译都使用同一身份签名，系统将认为它是同一应用，权限不会丢失。";
+
+// MARK: - 第3节：安装签名证书
+"SECTION3_TITLE" = "3. 安装签名证书（推荐）";
+"SECTION3_CONTENT" = "强烈建议安装签名证书，可以一劳永逸地解决版本更新后权限丢失的问题。";
+
+"SECTION3_1_TITLE" = "3.1 安装证书有什么好处？";
+"SECTION3_1_CONTENT" = "每次更新应用时，应用的身份标识会发生变化，系统会认为是「新应用」而重置权限。\n\n安装证书后，所有版本都使用同一身份签名，系统识别为同一应用：\n✅ 辅助功能权限一次授权，永久有效\n✅ 无需每次更新后重新授权\n✅ 证书有效期 10 年，长期稳定";
+
+"SECTION3_2_TITLE" = "3.2 如何安装？";
+"SECTION3_2_CONTENT" = "安装过程大约 1 分钟，请按以下步骤操作：\n\n① 点击下方「安装证书」按钮，系统终端将自动打开并执行安装脚本。\n\n② 脚本执行过程中可能需要输入两次密码：\n‣ 第一次：Mac 登录密码（用于解锁钥匙串）\n‣ 第二次：Mac 管理员密码（用于将证书设为信任）\n\n③ 安装完成后，终端会显示「✅ Certificate installed successfully!」。\n\n④ 此后每次更新应用时，将自动使用该证书签名，权限不再丢失。\n\n如需移除证书，可在终端执行：./setup-cert.sh --remove";
+
+// MARK: - 证书按钮 / 状态
+"INSTALL_CERTIFICATE" = "安装证书";
+"CERT_INSTALLED" = "已安装证书";

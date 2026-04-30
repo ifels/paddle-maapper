@@ -85,6 +85,13 @@ if [ -f "${PROJECT_DIR}/setup-cert.sh" ]; then
     cp "${PROJECT_DIR}/setup-cert.sh" "${APP_BUNDLE}/Contents/Resources/setup-cert.sh"
     chmod +x "${APP_BUNDLE}/Contents/Resources/setup-cert.sh"
 fi
+# Copy localization resources (.lproj directories)
+for lproj_dir in "${PROJECT_DIR}/Resources/"*.lproj; do
+    if [ -d "${lproj_dir}" ]; then
+        lproj_name=$(basename "${lproj_dir}")
+        cp -R "${lproj_dir}" "${APP_BUNDLE}/Contents/Resources/${lproj_name}"
+    fi
+done
 echo -n "APPL????" > "${APP_BUNDLE}/Contents/PkgInfo"
 echo "  .app bundle created."
 

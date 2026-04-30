@@ -152,17 +152,17 @@ struct ContentView: View {
             HStack {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundColor(.orange)
-                Text("Accessibility permission required to simulate key presses.")
+                Text(NSLocalizedString("ACCESSIBILITY_PERMISSION_REQUIRED", comment: "Permission warning message"))
                     .font(.subheadline)
                 Spacer()
             }
             HStack {
-                Button("Grant Permission") {
+                Button(NSLocalizedString("GRANT_PERMISSION", comment: "Grant permission button")) {
                     permissionChecker.requestAccessibility()
                 }
                 .buttonStyle(.borderedProminent)
 
-                Button("操作引导") {
+                Button(NSLocalizedString("SETUP_GUIDE", comment: "Setup guide button")) {
                     showPermissionGuide = true
                 }
                 .buttonStyle(.bordered)

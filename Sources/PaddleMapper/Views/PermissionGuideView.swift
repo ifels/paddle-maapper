@@ -13,7 +13,7 @@ struct PermissionGuideView: View {
                 Image(systemName: "book.circle.fill")
                     .font(.title2)
                     .foregroundColor(.blue)
-                Text("操作引导")
+                Text(NSLocalizedString("GUIDE_TITLE", comment: "Guide page title"))
                     .font(.title2.bold())
                 Spacer()
                 Button(action: { dismiss() }) {
@@ -35,13 +35,8 @@ struct PermissionGuideView: View {
                     guideSection(
                         icon: "lock.shield.fill",
                         iconColor: .orange,
-                        title: "1. 为什么需要「辅助功能」权限？",
-                        content: """
-                        PaddleMapper 的核心功能是将手柄拨片按键映射为键盘按键（如 F15-F18）。\
-                        要模拟键盘输入，macOS 要求应用必须拥有「辅助功能」权限，否则系统会拦截所有按键模拟请求。
-
-                        没有此权限，PaddleMapper 将无法工作。
-                        """
+                        title: NSLocalizedString("SECTION1_TITLE", comment: "Section 1 title"),
+                        content: NSLocalizedString("SECTION1_CONTENT", comment: "Section 1 content")
                     )
 
                     // ─── 2. 如何授权辅助功能权限 ───
@@ -50,10 +45,10 @@ struct PermissionGuideView: View {
                             Image(systemName: "hand.raised.fill")
                                 .foregroundColor(.blue)
                                 .font(.title3)
-                            Text("2. 如何授权「辅助功能」权限？")
+                            Text(NSLocalizedString("SECTION2_TITLE", comment: "Section 2 title"))
                                 .font(.headline)
                         }
-                        Text("按以下步骤操作：")
+                        Text(NSLocalizedString("SECTION2_SUBTITLE", comment: "Section 2 subtitle"))
                             .font(.body)
                             .foregroundColor(.secondary)
 
@@ -64,7 +59,7 @@ struct PermissionGuideView: View {
                                     .font(.body.bold())
                                     .foregroundColor(.blue)
                                 VStack(alignment: .leading, spacing: 6) {
-                                    Text("点击下方按钮，系统将自动跳转到「隐私与安全性 → 辅助功能」页面：")
+                                    Text(NSLocalizedString("SECTION2_STEP1_TEXT", comment: "Step 1 instruction"))
                                         .font(.body)
                                         .foregroundColor(.secondary)
                                     Button(action: {
@@ -72,7 +67,7 @@ struct PermissionGuideView: View {
                                     }) {
                                         HStack(spacing: 6) {
                                             Image(systemName: "gear")
-                                            Text("打开系统设置")
+                                            Text(NSLocalizedString("SECTION2_STEP1_BUTTON", comment: "Open System Settings button"))
                                         }
                                         .font(.subheadline.bold())
                                     }
@@ -86,7 +81,7 @@ struct PermissionGuideView: View {
                                 Text("②")
                                     .font(.body.bold())
                                     .foregroundColor(.blue)
-                                Text("在列表中找到 PaddleMapper，勾选其左侧的开关使其变为蓝色（已开启）。")
+                                Text(NSLocalizedString("SECTION2_STEP2", comment: "Step 2 instruction"))
                                     .font(.body)
                                     .foregroundColor(.secondary)
                             }
@@ -96,7 +91,7 @@ struct PermissionGuideView: View {
                                 Text("③")
                                     .font(.body.bold())
                                     .foregroundColor(.blue)
-                                Text("如果列表中没有 PaddleMapper，请先点击主界面的「Grant Permission」按钮，应用会弹出授权请求对话框，点击「打开系统设置」后再按步骤 ② 操作。")
+                                Text(NSLocalizedString("SECTION2_STEP3", comment: "Step 3 instruction"))
                                     .font(.body)
                                     .foregroundColor(.secondary)
                             }
@@ -106,7 +101,7 @@ struct PermissionGuideView: View {
                                 Text("④")
                                     .font(.body.bold())
                                     .foregroundColor(.blue)
-                                Text("授权完成后，PaddleMapper 会自动检测到权限变化并刷新状态。")
+                                Text(NSLocalizedString("SECTION2_STEP4", comment: "Step 4 instruction"))
                                     .font(.body)
                                     .foregroundColor(.secondary)
                             }
@@ -118,14 +113,8 @@ struct PermissionGuideView: View {
                     guideSection(
                         icon: "arrow.triangle.2.circlepath",
                         iconColor: .purple,
-                        title: "⚠️ 版本更新后权限可能丢失",
-                        content: """
-                        如果您没有安装签名证书，每次编译新版本后 macOS 会将其视为「新应用」，\
-                        之前授予的辅助功能权限会自动失效，需要重新授权。
-
-                        解决方案：安装签名证书（见下方），让每次编译都使用同一身份签名，\
-                        系统将认为它是同一应用，权限不会丢失。
-                        """
+                        title: NSLocalizedString("SECTION_UPDATE_TITLE", comment: "Update warning title"),
+                        content: NSLocalizedString("SECTION_UPDATE_CONTENT", comment: "Update warning content")
                     )
 
                     Divider()
@@ -135,43 +124,20 @@ struct PermissionGuideView: View {
                     guideSection(
                         icon: "certificate.fill",
                         iconColor: .green,
-                        title: "3. 安装签名证书（推荐）",
-                        content: """
-                        强烈建议安装签名证书，可以一劳永逸地解决版本更新后权限丢失的问题。
-                        """
+                        title: NSLocalizedString("SECTION3_TITLE", comment: "Section 3 title"),
+                        content: NSLocalizedString("SECTION3_CONTENT", comment: "Section 3 content")
                     )
 
                     // ─── 3.1 安装证书有什么好处 ───
                     guideSubSection(
-                        title: "3.1 安装证书有什么好处？",
-                        content: """
-                        每次更新应用时，应用的身份标识会发生变化，系统会认为是「新应用」而重置权限。
-
-                        安装证书后，所有版本都使用同一身份签名，系统识别为同一应用：\
-                        ✅ 辅助功能权限一次授权，永久有效\
-                        ✅ 无需每次更新后重新授权\
-                        ✅ 证书有效期 10 年，长期稳定
-                        """
+                        title: NSLocalizedString("SECTION3_1_TITLE", comment: "Section 3.1 title"),
+                        content: NSLocalizedString("SECTION3_1_CONTENT", comment: "Section 3.1 content")
                     )
 
                     // ─── 3.2 如何安装 ───
                     guideSubSection(
-                        title: "3.2 如何安装？",
-                        content: """
-                        安装过程大约 1 分钟，请按以下步骤操作：
-
-                        ① 点击下方「安装证书」按钮，系统终端将自动打开并执行安装脚本。
-
-                        ② 脚本执行过程中可能需要输入两次密码：\
-                        ‣ 第一次：Mac 登录密码（用于解锁钥匙串）\
-                        ‣ 第二次：Mac 管理员密码（用于将证书设为信任）
-
-                        ③ 安装完成后，终端会显示「✅ Certificate installed successfully!」。
-
-                        ④ 此后每次更新应用时，将自动使用该证书签名，权限不再丢失。
-
-                        如需移除证书，可在终端执行：./setup-cert.sh --remove
-                        """
+                        title: NSLocalizedString("SECTION3_2_TITLE", comment: "Section 3.2 title"),
+                        content: NSLocalizedString("SECTION3_2_CONTENT", comment: "Section 3.2 content")
                     )
 
                     // ─── 3.3 安装证书按钮 / 已安装状态 ───
@@ -181,7 +147,7 @@ struct PermissionGuideView: View {
                             HStack(spacing: 8) {
                                 Image(systemName: "checkmark.circle.fill")
                                     .foregroundColor(.green)
-                                Text("已安装证书")
+                                Text(NSLocalizedString("CERT_INSTALLED", comment: "Certificate installed status"))
                                     .foregroundColor(.secondary)
                             }
                             .font(.headline)
@@ -193,7 +159,7 @@ struct PermissionGuideView: View {
                             Button(action: installCertificate) {
                                 HStack(spacing: 8) {
                                     Image(systemName: "terminal.fill")
-                                    Text("安装证书")
+                                    Text(NSLocalizedString("INSTALL_CERTIFICATE", comment: "Install certificate button"))
                                 }
                                 .font(.headline)
                             }
