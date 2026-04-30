@@ -33,8 +33,15 @@
 "SECTION3_1_CONTENT" = "Each time the app is updated, its identity changes and the system treats it as a \"new app\", resetting permissions.\n\nAfter installing a certificate, all versions are signed with the same identity, and the system recognizes them as the same app:\n✅ Accessibility permission granted once, permanently valid\n✅ No need to re-authorize after each update\n✅ Certificate valid for 10 years, long-term stability";
 
 "SECTION3_2_TITLE" = "3.2 How to install?";
-"SECTION3_2_CONTENT" = "The installation takes about 1 minute. Follow these steps:\n\n① Click the \"Install Certificate\" button below. Terminal will open automatically and run the installation script.\n\n② You may need to enter your password twice during the process:\n‣ First time: Mac login password (to unlock the keychain)\n‣ Second time: Mac administrator password (to trust the certificate)\n\n③ When installation is complete, Terminal will display \"✅ Certificate installed successfully!\".\n\n④ From then on, each app update will be automatically signed with this certificate, and permissions will no longer be lost.\n\nTo remove the certificate, run in Terminal: ./setup-cert.sh --remove";
+"SECTION3_2_CONTENT" = "The installation takes about 1 minute. Follow these steps:\n\n① Click the \"Install Certificate\" button below. Terminal will open automatically and run the installation script.\n\n② You may need to enter your password twice during the process:\n‣ First time: Mac login password (to unlock the keychain)\n‣ Second time: Mac administrator password (to trust the certificate)\n\n③ When installation is complete, Terminal will display \"✅ Certificate installed successfully!\".\n\n④ From then on, each app update will be automatically signed with this certificate, and permissions will no longer be lost.";
 
 // MARK: - Certificate Button / Status
 "INSTALL_CERTIFICATE" = "Install Certificate";
+"REMOVE_CERTIFICATE" = "Remove Certificate";
 "CERT_INSTALLED" = "Certificate Installed";
+
+// MARK: - Section 4: How to Remove Certificate
+"SECTION4_TITLE" = "4. How to remove the certificate?";
+"SECTION4_CONTENT" = "If you no longer need the certificate, you can remove it. After removal, app updates will no longer be signed with a stable identity, and Accessibility permissions may be lost after each update.";
+"SECTION4_1_TITLE" = "4.1 Removal steps";
+"SECTION4_1_CONTENT" = "① Click the \"Remove Certificate\" button below. Terminal will open automatically and run the removal script.\n\n② If prompted for a password, enter your Mac administrator password.\n\n③ When removal is complete, Terminal will display \"Done.\".";

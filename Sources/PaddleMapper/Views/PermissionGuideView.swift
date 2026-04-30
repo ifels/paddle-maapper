@@ -169,6 +169,42 @@ struct PermissionGuideView: View {
                         Spacer()
                     }
                     .padding(.top, 8)
+
+                    Divider()
+                        .padding(.vertical, 4)
+
+                    // ─── 4. 如何删除证书 ───
+                    guideSection(
+                        icon: "trash.circle.fill",
+                        iconColor: .red,
+                        title: NSLocalizedString("SECTION4_TITLE", comment: "Section 4 title"),
+                        content: NSLocalizedString("SECTION4_CONTENT", comment: "Section 4 content")
+                    )
+
+                    // ─── 4.1 删除步骤 ───
+                    guideSubSection(
+                        title: NSLocalizedString("SECTION4_1_TITLE", comment: "Section 4.1 title"),
+                        content: NSLocalizedString("SECTION4_1_CONTENT", comment: "Section 4.1 content")
+                    )
+
+                    // ─── 4.2 删除证书按钮 ───
+                    HStack {
+                        Spacer()
+                        if permissionChecker.isCertInstalled {
+                            Button(action: removeCertificate) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "trash")
+                                    Text(NSLocalizedString("REMOVE_CERTIFICATE", comment: "Remove certificate button"))
+                                }
+                                .font(.headline)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.large)
+                            .foregroundColor(.red)
+                        }
+                        Spacer()
+                    }
+                    .padding(.top, 8)
                 }
                 .padding(20)
             }
@@ -221,30 +257,41 @@ struct PermissionGuideView: View {
 
     /// 打开终端执行证书安装脚本
     private func installCertificate() {
+        runCertScript(withArgs: nil)
+    }
+
+    /// 打开终端执行证书删除脚本
+    private func removeCertificate() {
+        runCertScript(withArgs: "--remove")
+    }
+
+    /// 运行 setup-cert.sh 脚本（安装或删除）
+    private func runCertScript(withArgs args: String?) {
+        let argSuffix = args.map { " \($0)" } ?? ""
         let scriptPath = Bundle.main.bundlePath + "/Contents/Resources/setup-cert.sh"
 
         // 检查脚本是否在 app bundle 内
         if FileManager.default.fileExists(atPath: scriptPath) {
-            openTerminalWithCommand(command: "\"\(scriptPath)\"")
+            openTerminalWithCommand(command: "\"\(scriptPath)\"\(argSuffix)")
         } else {
             // 回退到项目目录下的脚本（开发模式）
             let devScriptPath = (Bundle.main.bundlePath as NSString)
                 .deletingLastPathComponent + "/setup-cert.sh"
 
             if FileManager.default.fileExists(atPath: devScriptPath) {
-                openTerminalWithCommand(command: "\"\(devScriptPath)\"")
+                openTerminalWithCommand(command: "\"\(devScriptPath)\"\(argSuffix)")
             } else {
                 // 脚本不存在，尝试用 source code 目录下的脚本
                 let homePath = ProcessInfo.processInfo.environment["HOME"] ?? NSHomeDirectory()
                 let homeScript = homePath + "/.paddlemapper-cert/setup-cert.sh"
 
                 if FileManager.default.fileExists(atPath: homeScript) {
-                    openTerminalWithCommand(command: "\"\(homeScript)\"")
+                    openTerminalWithCommand(command: "\"\(homeScript)\"\(argSuffix)")
                 } else {
                     // 最终回退：在终端中 cd 到项目目录并执行
                     let projectPath = findProjectPath()
                     openTerminalWithCommand(
-                        command: "cd \"\(projectPath)\" && chmod +x setup-cert.sh && ./setup-cert.sh"
+                        command: "cd \"\(projectPath)\" && chmod +x setup-cert.sh && ./setup-cert.sh\(argSuffix)"
                     )
                 }
             }
