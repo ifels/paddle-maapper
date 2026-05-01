@@ -1,4 +1,5 @@
 import SwiftUI
+import ServiceManagement
 
 /// SwiftUI App declaration (no @main - main entry is in main.swift)
 ///
@@ -11,19 +12,21 @@ struct PaddleMapperApp: App {
     @StateObject private var monitor = ControllerMonitor()
     @StateObject private var config = MappingConfig()
     @StateObject private var permissionChecker = PermissionChecker()
+    @StateObject private var launchAtLogin = LaunchAtLoginManager()
 
     var body: some Scene {
         // 单例 Window Scene：多次 openWindow(id:"main") 不会创建多个实例
-        Window("PaddleMapper", id: "main") {
+        Window("Paddle Mapper", id: "main") {
             ContentView(
                 monitor: monitor,
                 config: config,
-                permissionChecker: permissionChecker
+                permissionChecker: permissionChecker,
+                launchAtLogin: launchAtLogin
             )
         }
         .windowStyle(.titleBar)
         .windowResizability(.contentSize)
-        .defaultSize(width: 840, height: 520)
+        .defaultSize(width: 900, height: 600)
         .commands {
             // Remove "New Window" from File menu (LSUIElement=true 时菜单不可见，但保留以防万一)
             CommandGroup(replacing: .newItem) { }
@@ -100,7 +103,26 @@ struct MenuBarContent: View {
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // LSUIElement = true: 启动时不自动显示窗口，仅驻留菜单栏
+        // Detect login launch via NSApplication notification userInfo key.
+        // NSApplication.launchIsLoginItemUserInfoKey (macOS 13+) is set to true when
+        // the app is launched as a Login Item (including SMAppService).
+        let launchIsLoginItemKey = "NSApplicationLaunchIsLoginItem"
+        let isLoginLaunch = notification.userInfo?[launchIsLoginItemKey] as? Bool ?? false
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            if isLoginLaunch {
+                // Login Item launch: close all windows, stay in menu bar only
+                for window in NSApp.windows.filter({ $0.isVisible }) {
+                    window.orderOut(nil)
+                }
+            } else {
+                // User launch: bring window to foreground
+                if let window = NSApp.windows.first(where: { $0.isVisible }) {
+                    NSApp.activate(ignoringOtherApps: true)
+                    window.makeKeyAndOrderFront(nil)
+                }
+            }
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -117,8 +139,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        // Dock 图标点击或 Spotlight 重新打开时，激活菜单栏图标
-        // (LSUIElement=true 下不会走此路径，但保留兼容性)
         if !flag {
             // 无可见窗口时，通过 NotificationCenter 请求打开主窗口
             NotificationCenter.default.post(name: .openMainWindow, object: nil)

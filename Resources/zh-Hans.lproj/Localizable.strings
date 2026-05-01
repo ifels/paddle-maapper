@@ -1,5 +1,23 @@
 /* PaddleMapper - 简体中文本地化字符串 */
 
+// MARK: - 侧边栏菜单
+"SIDEBAR_KEY_MAPPING" = "按键绑定";
+"SIDEBAR_KEY_DETECTION" = "按键检测";
+"SIDEBAR_SETUP_GUIDE" = "操作手册";
+"SIDEBAR_SETTINGS" = "系统设置";
+
+// MARK: - 系统设置页面
+"SETTINGS_ACCESSIBILITY" = "辅助功能权限";
+"SETTINGS_ACCESSIBILITY_GRANTED" = "辅助功能权限已授权";
+"SETTINGS_ACCESSIBILITY_DENIED" = "辅助功能权限未授权";
+"SETTINGS_OPEN_PREF" = "打开系统设置";
+"SETTINGS_CERTIFICATE" = "签名证书";
+"SETTINGS_CERT_NOT_INSTALLED" = "证书未安装";
+"SETTINGS_CERT_DESC" = "安装签名证书可防止应用更新后权限丢失。";
+"SETTINGS_ABOUT" = "关于";
+"SETTINGS_LAUNCH_AT_LOGIN" = "开机启动";
+"SETTINGS_LAUNCH_AT_LOGIN_DESC" = "登录时自动打开 Paddle Mapper";
+
 // MARK: - ContentView (权限警告)
 "ACCESSIBILITY_PERMISSION_REQUIRED" = "需要辅助功能权限才能模拟按键输入。";
 "GRANT_PERMISSION" = "授予权限";

@@ -1,5 +1,23 @@
 /* PaddleMapper - English Localizable Strings */
 
+// MARK: - Sidebar Menu
+"SIDEBAR_KEY_MAPPING" = "Key Bindings";
+"SIDEBAR_KEY_DETECTION" = "Key Detection";
+"SIDEBAR_SETUP_GUIDE" = "Setup Guide";
+"SIDEBAR_SETTINGS" = "Settings";
+
+// MARK: - System Settings Page
+"SETTINGS_ACCESSIBILITY" = "Accessibility Permission";
+"SETTINGS_ACCESSIBILITY_GRANTED" = "Accessibility permission granted";
+"SETTINGS_ACCESSIBILITY_DENIED" = "Accessibility permission not granted";
+"SETTINGS_OPEN_PREF" = "Open Preferences";
+"SETTINGS_CERTIFICATE" = "Signing Certificate";
+"SETTINGS_CERT_NOT_INSTALLED" = "Certificate not installed";
+"SETTINGS_CERT_DESC" = "A signing certificate prevents permission loss after app updates.";
+"SETTINGS_ABOUT" = "About";
+"SETTINGS_LAUNCH_AT_LOGIN" = "Launch at Login";
+"SETTINGS_LAUNCH_AT_LOGIN_DESC" = "Open Paddle Mapper automatically when you log in";
+
 // MARK: - ContentView (Permission Warning)
 "ACCESSIBILITY_PERMISSION_REQUIRED" = "Accessibility permission required to simulate key presses.";
 "GRANT_PERMISSION" = "Grant Permission";

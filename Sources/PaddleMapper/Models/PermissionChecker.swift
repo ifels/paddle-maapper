@@ -14,6 +14,9 @@ final class PermissionChecker: ObservableObject {
     /// Whether the code signing certificate is installed.
     @Published var isCertInstalled: Bool = false
 
+    /// Observer for System Settings deactivation (to bring Paddle Mapper back to front)
+    private var systemSettingsObserver: NSObjectProtocol?
+
     /// Check and update the published state.
     func checkPermission() {
         isAccessibilityGranted = AXIsProcessTrusted()
@@ -65,9 +68,48 @@ final class PermissionChecker: ObservableObject {
     }
 
     /// Open System Preferences directly to the Accessibility pane.
+    /// For LSUIElement apps, macOS does not return to our window after System Settings closes.
+    /// We observe System Settings deactivation and reactivate our window.
     func openAccessibilityPreferences() {
         let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
         NSWorkspace.shared.open(url)
+
+        // Watch for System Settings losing focus so we can bring Paddle Mapper back
+        observeSystemSettingsDeactivation()
+    }
+
+    // MARK: - System Settings Deactivation Observer
+
+    /// Observe when System Settings is deactivated (closed or user switches away),
+    /// then reactivate Paddle Mapper window so it becomes the foreground app.
+    private func observeSystemSettingsDeactivation() {
+        // Remove any previous observer
+        if let observer = systemSettingsObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+        }
+
+        systemSettingsObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didDeactivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                  app.bundleIdentifier == "com.apple.SystemSettings" else {
+                return
+            }
+
+            // System Settings was deactivated - bring Paddle Mapper back to front
+            NSApp.activate(ignoringOtherApps: true)
+            if let window = NSApp.windows.first(where: { $0.isVisible }) {
+                window.makeKeyAndOrderFront(nil)
+            }
+
+            // Clean up observer
+            if let observer = self?.systemSettingsObserver {
+                NSWorkspace.shared.notificationCenter.removeObserver(observer)
+                self?.systemSettingsObserver = nil
+            }
+        }
     }
 
     /// Start periodic permission checking (in case user grants while app is running).
