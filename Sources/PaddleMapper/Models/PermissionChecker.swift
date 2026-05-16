@@ -14,8 +14,8 @@ final class PermissionChecker: ObservableObject {
     /// Whether the code signing certificate is installed.
     @Published var isCertInstalled: Bool = false
 
-    /// Observer for System Settings deactivation (to bring Paddle Mapper back to front)
-    private var systemSettingsObserver: NSObjectProtocol?
+    /// Observers for System Settings deactivation/termination (to bring Paddle Mapper back to front)
+    private var systemSettingsObservers: [NSObjectProtocol] = []
 
     /// Check and update the published state.
     func checkPermission() {
@@ -80,15 +80,23 @@ final class PermissionChecker: ObservableObject {
 
     // MARK: - System Settings Deactivation Observer
 
-    /// Observe when System Settings is deactivated (closed or user switches away),
+    /// Observe when System Settings is deactivated or terminated,
     /// then reactivate Paddle Mapper window so it becomes the foreground app.
+    ///
+    /// For LSUIElement apps, macOS gives focus to the next regular app (e.g. Finder)
+    /// after System Settings closes. We need to wait for macOS to finish its own
+    /// window management, then forcefully bring our window back to front.
     private func observeSystemSettingsDeactivation() {
-        // Remove any previous observer
-        if let observer = systemSettingsObserver {
+        // Remove any previous observers
+        for observer in systemSettingsObservers {
             NSWorkspace.shared.notificationCenter.removeObserver(observer)
         }
+        systemSettingsObservers = []
 
-        systemSettingsObserver = NSWorkspace.shared.notificationCenter.addObserver(
+        let center = NSWorkspace.shared.notificationCenter
+
+        // Watch for System Settings losing focus (user switches away)
+        let deactivationObserver = center.addObserver(
             forName: NSWorkspace.didDeactivateApplicationNotification,
             object: nil,
             queue: .main
@@ -97,19 +105,63 @@ final class PermissionChecker: ObservableObject {
                   app.bundleIdentifier == "com.apple.SystemSettings" else {
                 return
             }
-
-            // System Settings was deactivated - bring Paddle Mapper back to front
-            NSApp.activate(ignoringOtherApps: true)
-            if let window = NSApp.windows.first(where: { $0.isVisible }) {
-                window.makeKeyAndOrderFront(nil)
-            }
-
-            // Clean up observer
-            if let observer = self?.systemSettingsObserver {
-                NSWorkspace.shared.notificationCenter.removeObserver(observer)
-                self?.systemSettingsObserver = nil
-            }
+            self?.bringPaddleMapperToFront()
         }
+
+        // Watch for System Settings quitting (user closes it)
+        let terminationObserver = center.addObserver(
+            forName: NSWorkspace.didTerminateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                  app.bundleIdentifier == "com.apple.SystemSettings" else {
+                return
+            }
+            self?.bringPaddleMapperToFront()
+        }
+
+        systemSettingsObservers = [deactivationObserver, terminationObserver]
+    }
+
+    /// Bring Paddle Mapper to the foreground after a short delay.
+    ///
+    /// For LSUIElement apps, macOS activates the next regular app (e.g. Finder)
+    /// after System Settings closes. Simply calling NSApp.activate is not enough
+    /// because the window server prioritizes regular apps over accessory apps.
+    ///
+    /// Strategy: temporarily raise our window level to .floating so it appears
+    /// above all regular windows, activate the app, then restore the window level.
+    private func bringPaddleMapperToFront() {
+        // Delay to let macOS finish its own focus switching (activating Finder etc.)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            guard let window = NSApp.windows.first(where: { $0.isVisible }) else {
+                self?.cleanupObservers()
+                return
+            }
+
+            // Temporarily elevate window level to force it above Finder
+            let originalLevel = window.level
+            window.level = .floating
+
+            NSApp.activate(ignoringOtherApps: true)
+            window.makeKeyAndOrderFront(nil)
+
+            // Restore window level after a brief moment so it behaves normally
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                window.level = originalLevel
+            }
+
+            self?.cleanupObservers()
+        }
+    }
+
+    /// Remove all System Settings observers.
+    private func cleanupObservers() {
+        for observer in systemSettingsObservers {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+        }
+        systemSettingsObservers = []
     }
 
     /// Start periodic permission checking (in case user grants while app is running).
