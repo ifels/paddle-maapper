@@ -3,10 +3,10 @@ import ServiceManagement
 
 /// SwiftUI App declaration (no @main - main entry is in main.swift)
 ///
-/// 方案 B：纯菜单栏 App (LSUIElement = true)
-/// - 无 Dock 图标，无应用菜单栏
-/// - MenuBarExtra 为唯一交互入口
-/// - Window 单例 Scene，启动时不自动开窗
+/// 方案 B: 菜单栏 App (LSUIElement = true), Dock 图标按窗口可见性动态切换
+/// - 默认 .accessory: 仅菜单栏图标, 不在 Dock / Cmd+Tab 出现
+/// - 主窗口可见时切到 .regular: Dock 显示图标, 关闭窗口后回到 .accessory
+/// - MenuBarExtra 始终常驻, 是窗口关闭后唯一交互入口
 struct PaddleMapperApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var monitor = ControllerMonitor()
@@ -109,6 +109,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let launchIsLoginItemKey = "NSApplicationLaunchIsLoginItem"
         let isLoginLaunch = notification.userInfo?[launchIsLoginItemKey] as? Bool ?? false
 
+        // 监听窗口显示/关闭, 按需在 .accessory / .regular 之间切换 Dock 图标
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(windowVisibilityDidChange),
+            name: NSWindow.didBecomeKeyNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(windowVisibilityDidChange),
+            name: NSWindow.willCloseNotification,
+            object: nil
+        )
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             if isLoginLaunch {
                 // Login Item launch: close all windows, stay in menu bar only
@@ -122,6 +136,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     window.makeKeyAndOrderFront(nil)
                 }
             }
+            // 启动后做一次同步: 用户启动 → .regular; 登录项启动 → 维持 .accessory
+            self.updateActivationPolicy()
+        }
+    }
+
+    @objc private func windowVisibilityDidChange(_ notification: Notification) {
+        // willClose 时窗口仍然 isVisible == true, 必须延后到下一个 runloop tick 再判断
+        DispatchQueue.main.async { [weak self] in
+            self?.updateActivationPolicy()
+        }
+    }
+
+    /// 主窗口可见 → .regular (显示 Dock 图标); 否则 .accessory (隐藏 Dock 图标)。
+    /// 通过 styleMask.titled 过滤 MenuBarExtra 弹出面板等无标题栏窗口。
+    private func updateActivationPolicy() {
+        let hasVisibleMainWindow = NSApp.windows.contains { window in
+            window.isVisible && window.styleMask.contains(.titled)
+        }
+        let target: NSApplication.ActivationPolicy = hasVisibleMainWindow ? .regular : .accessory
+        guard NSApp.activationPolicy() != target else { return }
+        NSApp.setActivationPolicy(target)
+        if target == .regular {
+            NSApp.activate(ignoringOtherApps: true)
         }
     }
 
