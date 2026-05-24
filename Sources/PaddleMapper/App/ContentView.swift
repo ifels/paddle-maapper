@@ -34,6 +34,8 @@ struct ContentView: View {
         }
         .frame(minWidth: 780, maxWidth: .infinity, minHeight: 500)
         .onAppear {
+            // 用 SwiftUI 管理的共享 MappingConfig 实例替换 monitor 自带的默认实例，
+            // 确保 UI 修改映射后 monitor 立即生效
             monitor.mappingConfig = config
             permissionChecker.checkPermission()
             permissionChecker.startMonitoring()

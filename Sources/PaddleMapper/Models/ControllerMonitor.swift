@@ -84,7 +84,10 @@ final class ControllerMonitor: ObservableObject {
     var hidDetector: IOKitDetector?
 
     /// The mapping config reference for looking up F-key assignments.
-    var mappingConfig: MappingConfig?
+    /// Initialized with a default MappingConfig (loaded from UserDefaults),
+    /// so key mapping works even before the main window appears (e.g. login item launch).
+    /// Replaced with the shared SwiftUI instance in ContentView.onAppear for live UI sync.
+    var mappingConfig: MappingConfig? = MappingConfig()
 
     // MARK: - Init
 
