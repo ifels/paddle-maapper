@@ -14,15 +14,16 @@
       <stop offset="100%" stop-color="#b57aff"/>
     </linearGradient>
     <clipPath id="iconClip">
-      <rect width="1024" height="1024" rx="224" ry="224"/>
+      <!-- ~100px transparent margin at 1024 (Apple template: ~50px at 512) -->
+      <rect x="100" y="100" width="824" height="824" rx="180" ry="180"/>
     </clipPath>
   </defs>
 
   <g clip-path="url(#iconClip)">
-    <rect width="1024" height="1024" rx="224" ry="224" fill="#000000"/>
+    <rect x="100" y="100" width="824" height="824" rx="180" ry="180" fill="#000000"/>
 
-    <!-- Full icon centered in canvas (includes LB/RB bumpers) -->
-    <g transform="translate(512, 512) scale(28) translate(-16, -16.025)">
+    <!-- Full icon centered; scale fits ~80% safe area inside squircle -->
+    <g transform="translate(512, 512) scale(23) translate(-16, -16.025)">
 
       <!-- Body outline (identical to icon.svg) -->
       <path
