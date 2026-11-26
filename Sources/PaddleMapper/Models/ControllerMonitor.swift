@@ -193,7 +193,7 @@ final class ControllerMonitor: ObservableObject {
     private func discoverPaddleButtons(_ controller: GCController) {
         paddleButtons.removeAll()
 
-        if #available(macOS 13.0, *) {
+        if #available(macOS 12.0, *) {
             let profile = controller.physicalInputProfile
 
             // Xbox paddle button names in Apple's GameController framework
@@ -330,7 +330,7 @@ final class ControllerMonitor: ObservableObject {
     private func pollAllInputs() {
         guard let controller = currentController else { return }
 
-        if #available(macOS 13.0, *) {
+        if #available(macOS 12.0, *) {
             let profile = controller.physicalInputProfile
             var inputs: [InputSignal] = []
 

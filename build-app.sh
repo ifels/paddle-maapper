@@ -1,167 +1,227 @@
 #!/bin/bash
 #
 # PaddleMapper macOS App Build Script
-# Compiles the Swift project and packages it into a .app bundle.
+# 编译 Swift 工程 → 打包 .app → 代码签名 → 生成 .dmg 安装包
 #
-# Usage:
-#   chmod +x build_app.sh
-#   ./build_app.sh           # Release build (optimized, ~2min)
-#   ./build_app.sh --fast    # Debug build (quick testing, ~15s)
-#   ./build_app.sh --clean   # Full clean + Release build
+# 最低系统版本: macOS 12.0 (Monterey)
 #
-# Output: build/PaddleMapper.app
+# 用法:
+#   ./build-app.sh              # Release 构建 (优化, 推荐)
+#   ./build-app.sh --fast       # Debug 构建 (快速验证)
+#   ./build-app.sh --clean      # 先清理构建缓存, 再 Release 构建
+#   ./build-app.sh --universal  # 通用二进制 (Intel + Apple Silicon)
+#   ./build-app.sh --no-dmg     # 只生成 .app, 不生成 .dmg
+#
+# 产物:
+#   build/PaddleMapper.app
+#   build/PaddleMapper-<版本>.dmg
+#
+# 注意: 本机 Command Line Tools 的 SwiftPM 不可用 (manifest 编译报
+#       "no such module 'PackageDescription'"), 因此脚本直接用 swiftc
+#       编译 Sources 下的所有 Swift 文件, 不依赖 swift build。
 #
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="${SCRIPT_DIR}"
 BUILD_DIR="${PROJECT_DIR}/build"
-SPM_BUILD_DIR="${PROJECT_DIR}/.build"
+SOURCES_DIR="${PROJECT_DIR}/Sources"
 
-# Parse flags
-DO_CLEAN=false
-BUILD_CONFIG=release
-for arg in "$@"; do
-    case "$arg" in
-        --fast)  BUILD_CONFIG=debug ;;
-        --clean) DO_CLEAN=true ;;
-    esac
-done
-
+MIN_MACOS="12.0"
 APP_NAME="PaddleMapper"
 BUNDLE_ID="com.ifels.controlflex.paddlemapper"
 APP_BUNDLE="${BUILD_DIR}/${APP_NAME}.app"
+ENTITLEMENTS="${PROJECT_DIR}/App/entitlements.plist"
+CERT_IDENTITY="PaddleMapper Developer"
+
+# ─── 解析参数 ───
+DO_CLEAN=false
+DO_DMG=true
+DO_UNIVERSAL=false
+OPT_FLAGS=(-O)
+for arg in "$@"; do
+    case "$arg" in
+        --fast)      OPT_FLAGS=(-Onone -g) ;;
+        --clean)     DO_CLEAN=true ;;
+        --no-dmg)    DO_DMG=false ;;
+        --universal) DO_UNIVERSAL=true ;;
+        -h|--help)   sed -n '2,25p' "$0"; exit 0 ;;
+    esac
+done
+
+APP_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" \
+    "${PROJECT_DIR}/Resources/Info.plist" 2>/dev/null || echo "1.0.0")
+DMG_PATH="${BUILD_DIR}/${APP_NAME}-${APP_VERSION}.dmg"
 
 echo "=== PaddleMapper Build Script ==="
-echo "Config:     ${BUILD_CONFIG}"
-echo "Project:    ${PROJECT_DIR}"
-echo "Output:     ${APP_BUNDLE}"
+echo "Version:     ${APP_VERSION}"
+echo "Min macOS:   ${MIN_MACOS}"
+echo "Optimize:    ${OPT_FLAGS[*]}"
+echo "Universal:   ${DO_UNIVERSAL}"
+echo "Project:     ${PROJECT_DIR}"
+echo "Output:      ${APP_BUNDLE}"
 echo ""
 
-# Step 1: Clean previous .app output only (keep SPM cache for incremental builds)
-echo "[1/5] Cleaning previous app bundle..."
-rm -rf "${BUILD_DIR}"
-if [ "$DO_CLEAN" = true ]; then
-    echo "  (full clean: removing .build cache)"
-    rm -rf "${SPM_BUILD_DIR}"
-fi
-
-# Step 2: Build with Swift Package Manager
-CONFIG_FLAG="-c ${BUILD_CONFIG}"
-[ "$BUILD_CONFIG" = "release" ] && CONFIG_FLAG=""
-echo "[2/5] Building with Swift Package Manager (${BUILD_CONFIG})..."
-cd "${PROJECT_DIR}"
-swift build -c "${BUILD_CONFIG}"
-echo "  Build successful."
-
-# Step 3: Find the compiled binary
-if [ "$BUILD_CONFIG" = "release" ]; then
-    BINARY_PATH="${SPM_BUILD_DIR}/apple/Products/Release/${APP_NAME}"
-    [ ! -f "${BINARY_PATH}" ] && BINARY_PATH="${SPM_BUILD_DIR}/release/${APP_NAME}"
-else
-    BINARY_PATH="${SPM_BUILD_DIR}/debug/${APP_NAME}"
-fi
-if [ ! -f "${BINARY_PATH}" ]; then
-    echo "ERROR: Compiled binary not found at ${BINARY_PATH}"
+# ─── 0. 环境检查 ───
+if ! command -v swiftc >/dev/null 2>&1; then
+    echo "ERROR: 未找到 swiftc, 请先安装 Xcode Command Line Tools:"
+    echo "       xcode-select --install"
     exit 1
 fi
-echo "  Binary: ${BINARY_PATH}"
+SDK_PATH="$(xcrun --show-sdk-path)"
+HOST_ARCH="$(uname -m)"
 
-# Step 4: Create .app bundle structure
-echo "[3/5] Creating .app bundle..."
-mkdir -p "${APP_BUNDLE}/Contents/MacOS"
-mkdir -p "${APP_BUNDLE}/Contents/Resources"
+# ─── 1. 清理 ───
+echo "[1/6] 清理旧的构建产物..."
+rm -rf "${BUILD_DIR}"
+if [ "$DO_CLEAN" = true ]; then
+    echo "      (--clean: 同时清理 .build 缓存)"
+    rm -rf "${PROJECT_DIR}/.build"
+fi
+mkdir -p "${BUILD_DIR}"
+
+# ─── 2. 编译 ───
+echo "[2/6] 编译 (target: macos${MIN_MACOS})..."
+SWIFT_SOURCES=()
+while IFS= read -r file; do
+    SWIFT_SOURCES+=("$file")
+done < <(find "${SOURCES_DIR}" -name '*.swift' | sort)
+
+if [ ${#SWIFT_SOURCES[@]} -eq 0 ]; then
+    echo "ERROR: ${SOURCES_DIR} 下没有找到 Swift 源文件"
+    exit 1
+fi
+
+compile_arch() {
+    local arch="$1"
+    local output="$2"
+    swiftc \
+        "${OPT_FLAGS[@]}" \
+        -target "${arch}-apple-macos${MIN_MACOS}" \
+        -sdk "${SDK_PATH}" \
+        -module-name "${APP_NAME}" \
+        -framework IOKit \
+        -o "${output}" \
+        "${SWIFT_SOURCES[@]}"
+}
+
+if [ "$DO_UNIVERSAL" = true ]; then
+    RAW_BINARY_DIR="${BUILD_DIR}/.binaries"
+    mkdir -p "${RAW_BINARY_DIR}"
+    for arch in x86_64 arm64; do
+        echo "      → 编译 ${arch} ..."
+        compile_arch "${arch}" "${RAW_BINARY_DIR}/${APP_NAME}-${arch}"
+    done
+    lipo -create \
+        "${RAW_BINARY_DIR}/${APP_NAME}-x86_64" \
+        "${RAW_BINARY_DIR}/${APP_NAME}-arm64" \
+        -output "${RAW_BINARY_DIR}/${APP_NAME}"
+    BINARY_PATH="${RAW_BINARY_DIR}/${APP_NAME}"
+else
+    BINARY_PATH="${BUILD_DIR}/${APP_NAME}"
+    compile_arch "${HOST_ARCH}" "${BINARY_PATH}"
+fi
+echo "      编译成功 ($(lipo -info "${BINARY_PATH}" | sed 's/.*architecture[s]*: //'))"
+
+# ─── 3. 组装 .app ───
+echo "[3/6] 组装 .app bundle..."
+mkdir -p "${APP_BUNDLE}/Contents/MacOS" "${APP_BUNDLE}/Contents/Resources"
 
 cp "${BINARY_PATH}" "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
 chmod +x "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
+
 cp "${PROJECT_DIR}/Resources/Info.plist" "${APP_BUNDLE}/Contents/Info.plist"
-cp "${PROJECT_DIR}/App/entitlements.plist" "${APP_BUNDLE}/Contents/Resources/entitlements.plist"
-# Copy app icon
+if [ -f "${ENTITLEMENTS}" ]; then
+    cp "${ENTITLEMENTS}" "${APP_BUNDLE}/Contents/Resources/entitlements.plist"
+fi
 if [ -f "${PROJECT_DIR}/Resources/AppIcon.icns" ]; then
     cp "${PROJECT_DIR}/Resources/AppIcon.icns" "${APP_BUNDLE}/Contents/Resources/AppIcon.icns"
 fi
-# Copy setup-cert.sh into app bundle (for in-app certificate installation)
+
+# 证书安装脚本 (App 内 「安装证书」 按钮会调用)
 if [ -f "${PROJECT_DIR}/setup-cert.sh" ]; then
     cp "${PROJECT_DIR}/setup-cert.sh" "${APP_BUNDLE}/Contents/Resources/setup-cert.sh"
     chmod +x "${APP_BUNDLE}/Contents/Resources/setup-cert.sh"
 fi
-# Copy localization resources (.lproj directories)
+
+# 本地化资源
 for lproj_dir in "${PROJECT_DIR}/Resources/"*.lproj; do
     if [ -d "${lproj_dir}" ]; then
-        lproj_name=$(basename "${lproj_dir}")
-        cp -R "${lproj_dir}" "${APP_BUNDLE}/Contents/Resources/${lproj_name}"
+        cp -R "${lproj_dir}" "${APP_BUNDLE}/Contents/Resources/$(basename "${lproj_dir}")"
     fi
 done
-echo -n "APPL????" > "${APP_BUNDLE}/Contents/PkgInfo"
-echo "  .app bundle created."
 
-# Step 5: Code sign with stable certificate
-CERT_IDENTITY="PaddleMapper Developer"
-ENTITLEMENTS="${PROJECT_DIR}/App/entitlements.plist"
+printf 'APPL????' > "${APP_BUNDLE}/Contents/PkgInfo"
 
-# Check if stable certificate is available
-if security find-identity -v -p codesigning "${HOME}/Library/Keychains/login.keychain-db" 2>/dev/null | grep -q "${CERT_IDENTITY}"; then
-    echo "[4/5] Code signing with certificate: ${CERT_IDENTITY}"
+# 清理中间产物
+rm -rf "${BUILD_DIR}/.binaries"
+[ "$DO_UNIVERSAL" = false ] && rm -f "${BINARY_PATH}"
+echo "      .app 组装完成。"
 
-    # Sign with stable certificate (includes Hardened Runtime)
-    if [ -f "${ENTITLEMENTS}" ]; then
-        codesign --force --deep --sign "${CERT_IDENTITY}" \
-                 --options runtime \
-                 --entitlements "${ENTITLEMENTS}" \
-                 "${APP_BUNDLE}" 2>/dev/null || {
-            echo "  WARNING: Signing with Hardened Runtime failed, trying without --options runtime..."
-            codesign --force --deep --sign "${CERT_IDENTITY}" \
-                     --entitlements "${ENTITLEMENTS}" \
-                     "${APP_BUNDLE}" 2>/dev/null || {
-                echo "  WARNING: Certificate signing failed, falling back to ad-hoc..."
-                codesign --force --deep --sign - --entitlements "${ENTITLEMENTS}" "${APP_BUNDLE}" 2>/dev/null || \
-                    codesign --force --deep --sign - "${APP_BUNDLE}" 2>/dev/null || true
-            }
-        }
-    else
-        codesign --force --deep --sign "${CERT_IDENTITY}" \
-                 --options runtime \
-                 "${APP_BUNDLE}" 2>/dev/null || {
-            codesign --force --deep --sign "${CERT_IDENTITY}" "${APP_BUNDLE}" 2>/dev/null || {
-                codesign --force --deep --sign - "${APP_BUNDLE}" 2>/dev/null || true
-            }
-        }
-    fi
+# ─── 4. 代码签名 ───
+echo "[4/6] 代码签名..."
+SIGN_ARGS=(--force --sign - --timestamp=none)
+[ -f "${ENTITLEMENTS}" ] && SIGN_ARGS+=(--entitlements "${ENTITLEMENTS}")
 
-    # Verify signature
-    if codesign --verify --deep --strict "${APP_BUNDLE}" 2>/dev/null; then
-        echo "  ✅ Signature verified."
-        codesign -d -r - "${APP_BUNDLE}" 2>/dev/null | head -1 | sed 's/^/  DR: /'
-    else
-        echo "  ⚠️  Signature verification failed."
+if security find-identity -v -p codesigning "${HOME}/Library/Keychains/login.keychain-db" 2>/dev/null \
+        | grep -q "${CERT_IDENTITY}"; then
+    echo "      使用稳定证书: ${CERT_IDENTITY}"
+    SIGN_ARGS=(--force --sign "${CERT_IDENTITY}" --timestamp=none)
+    [ -f "${ENTITLEMENTS}" ] && SIGN_ARGS+=(--entitlements "${ENTITLEMENTS}")
+    if ! codesign "${SIGN_ARGS[@]}" "${APP_BUNDLE}" 2>/dev/null; then
+        echo "      证书签名失败 (带 hardened runtime 选项), 重试..."
+        codesign "${SIGN_ARGS[@]}" "${APP_BUNDLE}"
     fi
 else
-    echo "[4/5] Code signing (ad-hoc — no stable certificate found)"
-    echo "  ⚠️  Run ./setup-cert.sh to create a stable signing certificate."
-    echo "     This avoids re-authorization after each build."
-    if [ -f "${ENTITLEMENTS}" ]; then
-        codesign --force --deep --sign - --entitlements "${ENTITLEMENTS}" "${APP_BUNDLE}" 2>/dev/null || {
-            codesign --force --deep --sign - "${APP_BUNDLE}" 2>/dev/null || true
-        }
-    else
-        codesign --force --deep --sign - "${APP_BUNDLE}" 2>/dev/null || true
-    fi
+    echo "      ⚠️  未找到证书「${CERT_IDENTITY}」, 使用 ad-hoc 签名"
+    echo "         提示: 运行 ./setup-cert.sh 生成稳定证书, 可避免每次编译后重新授权辅助功能。"
+    codesign "${SIGN_ARGS[@]}" "${APP_BUNDLE}"
 fi
-echo "  Signed."
 
-# Done
+if codesign --verify --strict "${APP_BUNDLE}" 2>/dev/null; then
+    echo "      ✅ 签名校验通过"
+else
+    echo "      ⚠️  签名校验未通过 (不影响本机运行)"
+fi
+
+# ─── 5. 生成 DMG 安装包 ───
+if [ "$DO_DMG" = true ]; then
+    echo "[5/6] 生成 DMG 安装包..."
+    STAGING_DIR="${BUILD_DIR}/.dmg-staging"
+    rm -rf "${STAGING_DIR}"
+    mkdir -p "${STAGING_DIR}"
+    cp -R "${APP_BUNDLE}" "${STAGING_DIR}/"
+    ln -s /Applications "${STAGING_DIR}/Applications"
+
+    hdiutil create \
+        -volname "${APP_NAME}" \
+        -srcfolder "${STAGING_DIR}" \
+        -ov -format UDZO \
+        "${DMG_PATH}" >/dev/null
+    rm -rf "${STAGING_DIR}"
+    echo "      DMG 生成完成。"
+else
+    echo "[5/6] 跳过 DMG (--no-dmg)。"
+fi
+
+# ─── 6. 完成 ───
 echo ""
-echo "[5/5] Build complete!"
+echo "[6/6] 构建完成！"
 echo ""
-echo "  App: ${APP_BUNDLE}"
-echo "  Size: $(du -sh "${APP_BUNDLE}" | cut -f1)"
+echo "  App:  ${APP_BUNDLE}"
+echo "  大小: $(du -sh "${APP_BUNDLE}" | cut -f1)"
+if [ "$DO_DMG" = true ]; then
+    echo "  安装包: ${DMG_PATH} ($(du -sh "${DMG_PATH}" | cut -f1))"
+fi
 echo ""
-echo "To install:"
-echo "  cp -r \"${APP_BUNDLE}\" /Applications/"
+echo "安装方式:"
+if [ "$DO_DMG" = true ]; then
+    echo "  open \"${DMG_PATH}\"      # 打开安装包, 把 PaddleMapper 拖到 Applications"
+fi
+echo "  或: cp -r \"${APP_BUNDLE}\" /Applications/"
 echo ""
-echo "To run:"
-echo "  open \"${APP_BUNDLE}\""
+echo "运行: open \"/Applications/${APP_NAME}.app\"  (状态栏会出现手柄图标)"
 echo ""
-echo "IMPORTANT: When you first run the app, you will be prompted to grant"
-echo "Accessibility permission in System Settings > Privacy & Security > Accessibility."
-echo "This is required for the app to simulate F-key presses."
+echo "首次运行提示:"
+echo "  1. 系统会要求授予「辅助功能」权限: 系统偏好设置 → 安全性与隐私 → 隐私 → 辅助功能"
+echo "  2. 已开启「开机启动」时, 登录后仅驻留菜单栏, 不弹出主窗口"
